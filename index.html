@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Legal Document Demystifier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .chat-container::-webkit-scrollbar {
+        width: 4px;
+      }
+      .chat-container::-webkit-scrollbar-thumb {
+        background-color: #9ca3af;
+        border-radius: 20px;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-gray-100 flex flex-col items-center justify-center min-h-screen"
+  >
+    <div
+      class="w-full max-w-4xl bg-white shadow-2xl rounded-2xl flex flex-col h-[90vh]"
+    >
+      <!-- Header -->
+      <header class="p-4 border-b border-gray-200 text-center">
+        <h1 class="text-2xl font-bold text-gray-800">
+          Legal Document Demystifier AI ⚖️
+        </h1>
+        <p class="text-sm text-gray-500">
+          Upload, manage, and query multiple legal documents at once.
+        </p>
+      </header>
+
+      <!-- Main Content -->
+      <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <!-- Sidebar for Upload -->
+        <aside
+          class="w-full md:w-1/3 p-4 border-r border-gray-200 bg-gray-50 flex flex-col"
+        >
+          <h2 class="text-lg font-semibold mb-3 text-gray-700">
+            1. Upload Documents
+          </h2>
+          <div
+            id="upload-area"
+            class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center flex flex-col justify-center items-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
+          >
+            <input
+              type="file"
+              id="file-upload"
+              class="hidden"
+              accept=".pdf,.txt"
+              multiple
+            />
+            <svg
+              class="w-12 h-12 text-gray-400 mb-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h1.586A3 3 0 0112.586 3L13 2.586A3 3 0 0115.414 1H17a4 4 0 014 4v5a4 4 0 01-4 4H7z"
+              ></path>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M16 16v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4"
+              ></path>
+            </svg>
+            <p class="text-gray-500">Click to browse or drag & drop</p>
+            <p class="text-xs text-gray-400 mt-1">You can add multiple files</p>
+          </div>
+          <div
+            id="active-file-display"
+            class="mt-4 space-y-2 flex-1 overflow-y-auto"
+          ></div>
+          <div id="status-area" class="mt-4"></div>
+        </aside>
+
+        <!-- Chat Area -->
+        <section class="flex-1 flex flex-col p-4">
+          <h2 class="text-lg font-semibold mb-3 text-gray-700">
+            2. Ask Questions
+          </h2>
+          <div
+            id="chat-container"
+            class="flex-1 bg-gray-100 rounded-lg p-4 overflow-y-auto chat-container"
+          >
+            <!-- Initial AI Message -->
+            <div class="flex items-start gap-3 mb-4">
+              <div
+                class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+              >
+                AI
+              </div>
+              <div class="bg-white p-3 rounded-lg shadow-sm max-w-md">
+                <p class="text-sm text-gray-700">
+                  Hello! Please upload one or more documents to begin.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Input Form -->
+          <form id="chat-form" class="mt-4 flex items-center gap-3">
+            <input
+              type="text"
+              id="user-input"
+              placeholder="e.g., 'Summarize the key points'"
+              class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-200"
+              disabled
+            />
+            <button
+              type="submit"
+              id="send-button"
+              class="bg-blue-500 text-white font-semibold px-4 py-3 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed"
+              disabled
+            >
+              <svg
+                class="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 10l7-7m0 0l7 7m-7-7v18"
+                ></path>
+              </svg>
+            </button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const uploadArea = document.getElementById("upload-area");
+      const fileUpload = document.getElementById("file-upload");
+      const activeFileDisplay = document.getElementById("active-file-display");
+      const statusArea = document.getElementById("status-area");
+      const chatContainer = document.getElementById("chat-container");
+      const chatForm = document.getElementById("chat-form");
+      const userInput = document.getElementById("user-input");
+      const sendButton = document.getElementById("send-button");
+
+      const API_URL = "http://127.0.0.1:8000";
+      let sessionId = null;
+
+      // --- File Upload Logic ---
+      uploadArea.addEventListener("click", () => fileUpload.click());
+      fileUpload.addEventListener("change", (e) => {
+        if (e.target.files.length > 0) {
+          handleFileUpload(e.target.files);
+          e.target.value = ""; // Reset file input
+        }
+      });
+
+      // Drag and drop
+      uploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadArea.classList.add("border-blue-500", "bg-blue-50");
+      });
+      uploadArea.addEventListener("dragleave", () => {
+        uploadArea.classList.remove("border-blue-500", "bg-blue-50");
+      });
+      uploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove("border-blue-500", "bg-blue-50");
+        if (e.dataTransfer.files.length > 0) {
+          handleFileUpload(e.dataTransfer.files);
+        }
+      });
+
+      async function handleFileUpload(files) {
+        statusArea.innerHTML = `
+                <div class="flex items-center gap-2 text-gray-600 text-sm">
+                    <div class="w-4 h-4 border-2 border-t-blue-500 border-gray-200 rounded-full animate-spin"></div>
+                    Processing ${files.length} file(s)...
+                </div>`;
+
+        const formData = new FormData();
+        for (const file of files) {
+          formData.append("files", file);
+        }
+        if (sessionId) {
+          formData.append("session_id", sessionId);
+        }
+
+        try {
+          const response = await fetch(`${API_URL}/process-documents/`, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || "Failed to process documents");
+          }
+
+          const result = await response.json();
+          sessionId = result.session_id; // Store the session ID
+          updateActiveFiles(result.filenames);
+          statusArea.innerHTML = `<div class="p-2 bg-green-100 text-green-800 rounded-lg text-xs text-center mt-2">✅ Ready to chat.</div>`;
+
+          // Enable chat
+          if (result.filenames.length > 0) {
+            userInput.disabled = false;
+            sendButton.disabled = false;
+            userInput.focus();
+          }
+
+          // Add a message to the chat
+          if (
+            chatContainer.children.length <= 1 ||
+            result.filenames.length === files.length
+          ) {
+            chatContainer.innerHTML = "";
+            addMessage(
+              "ai",
+              `Processed ${result.filenames.length} document(s). I'm ready to answer your questions.`,
+            );
+          } else {
+            addMessage(
+              "ai",
+              `Added ${files.length} new document(s). You can now ask questions about all active files.`,
+            );
+          }
+        } catch (error) {
+          statusArea.innerHTML = `<div class="p-3 bg-red-100 text-red-800 rounded-lg text-sm">Error: ${error.message}</div>`;
+        }
+      }
+
+      function updateActiveFiles(filenames) {
+        // If all files are removed, reset the app state
+        if (filenames.length === 0 && sessionId) {
+          resetApp();
+          return;
+        }
+
+        if (filenames.length > 0) {
+          let fileListHtml = filenames
+            .map(
+              (name) => `
+                    <div class="flex items-center justify-between bg-white p-2 border border-gray-200 rounded-md">
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <svg class="w-5 h-5 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <span class="text-sm font-medium text-gray-800 truncate" title="${name}">${name}</span>
+                        </div>
+                        <button class="remove-file-btn text-gray-400 hover:text-red-600 p-1 rounded-full" data-filename="${name}" title="Remove file">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                `,
+            )
+            .join("");
+
+          activeFileDisplay.innerHTML = `
+                    <div>
+                        <h3 class="text-md font-semibold text-gray-600 mb-2">Active Documents:</h3>
+                        <div class="space-y-2">${fileListHtml}</div>
+                    </div>`;
+
+          if (!document.getElementById("clear-session-btn-wrapper")) {
+            const clearButtonWrapper = document.createElement("div");
+            clearButtonWrapper.id = "clear-session-btn-wrapper";
+            clearButtonWrapper.innerHTML = `<button id="clear-session-btn" class="w-full mt-3 text-sm text-red-600 hover:text-red-800 font-semibold py-2 rounded-lg hover:bg-red-100 transition-colors">Clear All & Reset</button>`;
+            activeFileDisplay.insertAdjacentElement(
+              "afterend",
+              clearButtonWrapper,
+            );
+            document
+              .getElementById("clear-session-btn")
+              .addEventListener("click", resetApp);
+          }
+        } else {
+          activeFileDisplay.innerHTML = "";
+          if (document.getElementById("clear-session-btn-wrapper")) {
+            document.getElementById("clear-session-btn-wrapper").remove();
+          }
+        }
+
+        // Add event listeners to remove buttons
+        document.querySelectorAll(".remove-file-btn").forEach((button) => {
+          button.addEventListener("click", handleRemoveFile);
+        });
+      }
+
+      async function handleRemoveFile(event) {
+        const button = event.currentTarget;
+        const filename = button.dataset.filename;
+
+        if (!sessionId || !filename) return;
+
+        button.disabled = true;
+        button.innerHTML = `<div class="w-4 h-4 border-2 border-t-gray-500 border-gray-200 rounded-full animate-spin m-auto"></div>`;
+
+        try {
+          const response = await fetch(`${API_URL}/remove-document/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename: filename, session_id: sessionId }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || "Failed to remove file");
+          }
+
+          const result = await response.json();
+          updateActiveFiles(result.filenames);
+          addMessage(
+            "ai",
+            `Removed "${filename}". The knowledge base has been updated.`,
+          );
+        } catch (error) {
+          addMessage("ai", `Error removing file: ${error.message}`);
+          // Restore button on error
+          button.disabled = false;
+          button.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+        }
+      }
+
+      async function resetApp() {
+        if (sessionId) {
+          try {
+            await fetch(`${API_URL}/clear-session/`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ session_id: sessionId }),
+            });
+          } catch (error) {
+            console.error("Failed to clear session on backend:", error);
+          }
+        }
+
+        sessionId = null;
+        activeFileDisplay.innerHTML = "";
+        statusArea.innerHTML = "";
+        if (document.getElementById("clear-session-btn-wrapper")) {
+          document.getElementById("clear-session-btn-wrapper").remove();
+        }
+
+        userInput.disabled = true;
+        sendButton.disabled = true;
+        userInput.value = "";
+
+        chatContainer.innerHTML = `<div class="flex items-start gap-3 mb-4"><div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">AI</div><div class="bg-white p-3 rounded-lg shadow-sm max-w-md"><p class="text-sm text-gray-700">Hello! Please upload one or more documents to begin.</p></div></div>`;
+        fileUpload.value = ""; // Clear file input
+      }
+
+      // --- Chat Logic ---
+      chatForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const question = userInput.value.trim();
+        if (!question || !sessionId) return;
+
+        addMessage("human", question);
+        userInput.value = "";
+        userInput.disabled = true;
+        sendButton.disabled = true;
+
+        const thinkingIndicator = addMessage(
+          "ai",
+          '<div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0s;"></div><div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s;"></div><div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s;"></div>',
+          true,
+        );
+
+        try {
+          const response = await fetch(`${API_URL}/query/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question: question, session_id: sessionId }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || "Failed to get answer");
+          }
+
+          const result = await response.json();
+
+          thinkingIndicator.remove();
+          addMessage("ai", result.answer);
+        } catch (error) {
+          thinkingIndicator.remove();
+          addMessage("ai", `Sorry, an error occurred: ${error.message}`);
+        } finally {
+          userInput.disabled = false;
+          sendButton.disabled = false;
+          userInput.focus();
+        }
+      });
+
+      function addMessage(sender, text, isHtml = false) {
+        const messageWrapper = document.createElement("div");
+        messageWrapper.className = "flex items-start gap-3 mb-4 w-full";
+
+        if (sender === "ai") {
+          messageWrapper.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">AI</div>
+                    <div class="bg-white p-3 rounded-lg shadow-sm max-w-md flex gap-2 items-center">
+                        ${isHtml ? text : `<p class="text-sm text-gray-700">${text}</p>`}
+                    </div>`;
+        } else {
+          messageWrapper.classList.add("justify-end");
+          messageWrapper.innerHTML = `
+                    <div class="bg-blue-500 text-white p-3 rounded-lg shadow-sm max-w-md">
+                        <p class="text-sm">${text}</p>
+                    </div>`;
+        }
+        chatContainer.appendChild(messageWrapper);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        return messageWrapper;
+      }
+    </script>
+  </body>
+</html>
